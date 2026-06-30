@@ -1,0 +1,5 @@
+creation_rules:
+  - path_regex: ^tofu/terraform\.tfstate\.sops\.json$
+    age: 'age19snp5ft2rkat7hqcceretkythlzar0k043c560swt8gekwycjqlsyf63ag,ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMsVXzD7GxpLIF1uZTq9TTzIAdq5xM+5MTaJJuzE+3cf'
+  - path_regex: ^talos/secrets(\.sops)?\.ya?ml$
+    age: 'age19snp5ft2rkat7hqcceretkythlzar0k043c560swt8gekwycjqlsyf63ag,ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMsVXzD7GxpLIF1uZTq9TTzIAdq5xM+5MTaJJuzE+3cf'

@@ -1,0 +1,13 @@
+# OpenTofu/Terraform local state and provider cache.
+tofu/.terraform/
+tofu/*.tfstate
+tofu/*.tfstate.*
+!tofu/terraform.tfstate.sops.json
+tofu/crash.log
+tofu/crash.*.log
+
+# Generated client configs.
+talos/talosconfig
+talos/secrets.yaml
+talos/generated/
+kubeconfig/*.yaml

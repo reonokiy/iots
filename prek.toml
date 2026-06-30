@@ -1,0 +1,25 @@
+minimum_prek_version = "0.4.5"
+default_install_hook_types = ["pre-commit"]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "tofu-state-sops-guard"
+name = "encrypt OpenTofu state and block plaintext state commits"
+language = "system"
+entry = "mise exec -- bash scripts/tofu-state-guard.sh"
+always_run = true
+pass_filenames = false
+stages = ["pre-commit"]
+require_serial = true
+
+[[repos.hooks]]
+id = "no-plaintext-secrets"
+name = "block plaintext secrets and verify SOPS files"
+language = "system"
+entry = "mise exec -- bash scripts/no-plaintext-secrets.sh"
+always_run = true
+pass_filenames = false
+stages = ["pre-commit"]
+require_serial = true

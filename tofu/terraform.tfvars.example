@@ -1,0 +1,19 @@
+# First-pass sizing for this host:
+# - 16 CPU threads total
+# - about 14 GiB RAM total
+# - two-node Talos cluster: control-plane only + worker workloads
+
+cluster_name               = "iots-lab"
+controlplane_vcpu          = 4
+controlplane_memory_mib    = 4096
+controlplane_disk_bytes    = 85899345920
+libvirt_network_name       = "iots-lab"
+libvirt_network_cidr       = "192.168.130.0/24"
+controlplane_mac           = "52:54:00:13:37:11"
+controlplane_ip            = "192.168.130.11"
+worker_vcpu                = 6
+worker_memory_mib          = 6144
+worker_disk_bytes          = 107374182400
+worker_mac                 = "52:54:00:13:37:12"
+worker_ip                  = "192.168.130.12"
+talos_version              = "v1.13.5"

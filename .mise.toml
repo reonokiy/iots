@@ -1,0 +1,109 @@
+[tools]
+# VM and infrastructure declaration.
+opentofu = "latest"
+prek = "latest"
+
+# Talos/Kubernetes client tools. Keep these close to tofu/variables.tf.
+talosctl = "1.13.5"
+kubectl = "1.36.1"
+
+# GitOps and secret management.
+flux2 = "latest"
+sops = "latest"
+age = "latest"
+
+# Useful for inspecting generated YAML/JSON while debugging bootstrap.
+jq = "latest"
+yq = "latest"
+
+[env]
+TALOSCONFIG = "{{ config_root }}/talos/talosconfig"
+KUBECONFIG = "{{ config_root }}/kubeconfig/iots-lab.yaml"
+
+[tasks."tofu:init"]
+description = "Initialize OpenTofu providers for the Talos libvirt lab."
+dir = "{{ config_root }}/tofu"
+run = "tofu init"
+
+[tasks."tofu:plan"]
+description = "Preview libvirt VM and Talos changes."
+dir = "{{ config_root }}/tofu"
+run = "tofu plan"
+
+[tasks."tofu:apply"]
+description = "Create/update the Talos libvirt VM and related host resources."
+dir = "{{ config_root }}/tofu"
+run = "tofu apply"
+
+[tasks."tofu:destroy"]
+description = "Destroy the Talos lab VM and related libvirt resources."
+dir = "{{ config_root }}/tofu"
+run = "tofu destroy"
+
+[tasks."tofu:state:encrypt"]
+description = "Encrypt local OpenTofu state into tofu/terraform.tfstate.sops.json."
+run = "bash scripts/tofu-state-guard.sh"
+
+[tasks."tofu:state:decrypt"]
+description = "Decrypt tofu/terraform.tfstate.sops.json into local OpenTofu state."
+run = "bash scripts/tofu-state-decrypt.sh"
+
+[tasks."tofu:apply:safe"]
+description = "Decrypt state if present, run OpenTofu apply, then encrypt state for Git."
+run = "bash scripts/tofu-state-decrypt.sh && tofu -chdir=tofu apply && bash scripts/tofu-state-guard.sh"
+
+[tasks."hooks:install"]
+description = "Install prek Git hooks for this repository."
+run = "prek install"
+
+[tasks."hooks:run"]
+description = "Run all prek hooks."
+run = "prek run --all-files"
+
+[tasks."host:singbox-libvirt"]
+description = "Install runtime host rules so libvirt VM traffic uses sing-box TUN."
+run = "sudo bash scripts/host-singbox-libvirt.sh"
+
+[tasks."talos:install-media:attach"]
+description = "Temporarily attach Talos ISO volumes as SATA CD-ROMs for first boot."
+run = "sudo -u iots -g libvirt bash scripts/talos-install-media.sh attach"
+
+[tasks."talos:install-media:detach"]
+description = "Remove temporary Talos ISO CD-ROMs from libvirt persistent VM config."
+run = "sudo -u iots -g libvirt bash scripts/talos-install-media.sh detach"
+
+[tasks."talos:health"]
+description = "Check Talos cluster health."
+run = "talosctl --nodes 192.168.130.11 --endpoints 192.168.130.11 health --control-plane-nodes 192.168.130.11 --worker-nodes 192.168.130.12"
+
+[tasks."talos:gen-secrets"]
+description = "Generate local Talos secrets.yaml. This file is ignored and must be encrypted with SOPS."
+run = "umask 077 && talosctl gen secrets --talos-version 1.13.5 --output-file talos/secrets.yaml"
+
+[tasks."talos:encrypt-secrets"]
+description = "Encrypt talos/secrets.yaml into talos/secrets.sops.yaml using .sops.yaml recipients."
+run = "sops --encrypt --output talos/secrets.sops.yaml talos/secrets.yaml"
+
+[tasks."talos:decrypt-secrets"]
+description = "Decrypt talos/secrets.sops.yaml back to talos/secrets.yaml."
+run = "umask 077 && sops --decrypt --output talos/secrets.yaml talos/secrets.sops.yaml"
+
+[tasks."talos:gen-config"]
+description = "Generate Talos machine config and talosconfig from talos/secrets.yaml."
+run = "mkdir -p talos/generated && talosctl gen config iots-lab https://192.168.130.11:6443 --with-secrets talos/secrets.yaml --output talos/generated --force --talos-version v1.13.5 --kubernetes-version 1.36.1 --install-disk /dev/vda --install-image ghcr.io/siderolabs/installer:v1.13.5 --config-patch-control-plane @talos/patches/controlplane.yaml --config-patch-worker @talos/patches/worker.yaml && cp talos/generated/talosconfig talos/talosconfig && chmod 600 talos/talosconfig && talosctl --talosconfig talos/talosconfig config endpoint 192.168.130.11 && talosctl --talosconfig talos/talosconfig config node 192.168.130.11 192.168.130.12"
+
+[tasks."talos:apply-config"]
+description = "Apply the generated configs to the fresh Talos VMs."
+run = "talosctl apply-config --insecure --nodes 192.168.130.11 --file talos/generated/controlplane.yaml && talosctl apply-config --insecure --nodes 192.168.130.12 --file talos/generated/worker.yaml"
+
+[tasks."talos:bootstrap"]
+description = "Bootstrap etcd/Kubernetes on the Talos control-plane node."
+run = "talosctl --nodes 192.168.130.11 --endpoints 192.168.130.11 bootstrap"
+
+[tasks."talos:kubeconfig"]
+description = "Fetch Kubernetes kubeconfig from Talos."
+run = "mkdir -p kubeconfig && talosctl --nodes 192.168.130.11 --endpoints 192.168.130.11 kubeconfig --force --force-context-name iots-lab kubeconfig/iots-lab.yaml"
+
+[tasks."k8s:nodes"]
+description = "List Kubernetes nodes."
+run = "kubectl get nodes -o wide"
