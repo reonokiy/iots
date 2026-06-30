@@ -13,17 +13,20 @@ Flux      -> future GitOps add-ons and workloads
 ## Current Topology
 
 ```text
-iots-lab-cp-1      192.168.130.11  control-plane only
-iots-lab-worker-1  192.168.130.12  workload node
+default nodes:
+  iots-lab-cp-1      192.168.130.11  control-plane only
+  iots-lab-worker-1  192.168.130.12  workload node
 
-libvirt network: iots-lab
-CIDR:            192.168.130.0/24
-gateway/DNS:     192.168.130.1
-Talos version:   v1.13.5
-Kubernetes:      1.36.1
+libvirt network:    iots-lab
+CIDR:               192.168.130.0/24
+gateway/DNS:        192.168.130.1
+Talos version:      v1.13.5
+Kubernetes:         1.36.1
+node inventory:     tofu output -json nodes
 ```
 
-The control-plane must not run normal workloads. This is declared in `talos/patches/controlplane.yaml`:
+The control-plane must not run normal workloads. This is declared in
+`talos/patches/controlplane.yaml`:
 
 ```yaml
 cluster:
@@ -32,9 +35,11 @@ cluster:
 
 ## What To Edit
 
-- VM shape, disks, MACs, static IP reservations:
+- VM count, shape, disks, MACs, static IP reservations:
   edit `tofu/variables.tf`, `tofu/main.tf`, `tofu/outputs.tf`, and `tofu/terraform.tfvars.example`.
-- Talos static network settings:
+- Talos static network settings and hostnames:
+  generated from `tofu output -json nodes` by `scripts/talos-gen-config.sh`.
+- Talos role-wide patches:
   edit `talos/patches/controlplane.yaml` and/or `talos/patches/worker.yaml`.
 - Project tools and operational commands:
   edit `.mise.toml`.
@@ -45,10 +50,16 @@ cluster:
 - User-facing setup docs:
   edit `README.md` and `TALOS.md`.
 
-When adding nodes, update both layers:
+When adding nodes, prefer changing only the Tofu variables:
 
-1. Add the libvirt disk/domain/IP/MAC in `tofu/`.
-2. Add or adjust the matching Talos patch and mise tasks.
+```hcl
+controlplane_count = 3
+worker_count       = 2
+```
+
+Keep generated IP/MAC ranges non-overlapping. `mise run talos:gen-config`
+derives per-node Talos configs from OpenTofu outputs, so do not add separate
+hand-written per-node Talos patch files.
 
 ## Generated Or Sensitive Files
 
@@ -158,8 +169,8 @@ Talos/Kubernetes bootstrap:
 ```bash
 mise run host:singbox-libvirt
 mise run talos:install-media:attach
-mise run talos:gen-config
-mise run talos:apply-config
+mise run talos:gen-config   # generates talos/generated/<node>.yaml
+mise run talos:apply-config # applies every generated node config
 mise run talos:bootstrap
 mise run talos:kubeconfig
 ```
@@ -169,8 +180,7 @@ Checks:
 ```bash
 mise run talos:health
 mise run k8s:nodes
-talosctl validate --mode metal --config talos/generated/controlplane.yaml
-talosctl validate --mode metal --config talos/generated/worker.yaml
+for f in talos/generated/iots-lab-*.yaml; do talosctl validate --mode metal --config "$f"; done
 mise run hooks:run
 ```
 
@@ -181,7 +191,7 @@ mise run hooks:run
 - Do not put Talos secrets back into OpenTofu resources/providers/state.
 - Keep `prek.toml` hooks active: `tofu-state-sops-guard` encrypts state, and `no-plaintext-secrets` blocks staged plaintext secrets while verifying SOPS files.
 - If Git hooks appear missing, rerun `mise run hooks:install`.
-- Keep static IPs synchronized between `tofu/terraform.tfvars.example` and `talos/patches/*.yaml`.
+- Keep node inventory in Tofu. Do not duplicate static IPs in Talos patches.
 - Talos NTP is intentionally local to the host gateway `192.168.130.1`; reuse the host's existing chronyd rather than adding a new NTP component. If chronyd is present, it must allow `192.168.130.0/24`, and firewalld `libvirt` zone must allow `123/udp`.
 - VM egress should go through sing-box TUN. Re-run `mise run host:singbox-libvirt` after sing-box, Docker, firewalld, or libvirt restarts; it restores the VM fwmark rule, route table entry, Docker forwarding accepts, and `sing-box-tun` `rp_filter=0`.
 - First boot needs `mise run talos:install-media:attach` because Talos ISO boots reliably as a SATA CD-ROM, while the libvirt provider can only refresh safely when the OpenTofu model keeps ISO volumes as normal disks. After install, run `mise run talos:install-media:detach`, reboot existing domains, then run `tofu plan`.

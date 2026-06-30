@@ -1,24 +1,2 @@
-machine:
-  time:
-    servers:
-      - 192.168.130.1
-  network:
-    interfaces:
-      - interface: ens3
-        dhcp: false
-        addresses:
-          - 192.168.130.11/24
-        routes:
-          - network: 0.0.0.0/0
-            gateway: 192.168.130.1
-    nameservers:
-      - 192.168.130.1
-      - 1.1.1.1
 cluster:
   allowSchedulingOnControlPlanes: false
----
-apiVersion: v1alpha1
-kind: HostnameConfig
-auto:
-  $patch: delete
-hostname: iots-lab-cp-1

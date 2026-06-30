@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/lib/talos-common.sh"
+
 action="${1:-}"
 virsh_uri="${LIBVIRT_URI:-qemu:///system}"
 pool="${LIBVIRT_POOL:-iots-lab}"
-controlplane_domain="${CONTROLPLANE_DOMAIN:-iots-lab-cp-1}"
-worker_domain="${WORKER_DOMAIN:-iots-lab-worker-1}"
-controlplane_iso="${CONTROLPLANE_ISO:-talos-v1.13.5-metal-amd64.iso}"
-worker_iso="${WORKER_ISO:-talos-v1.13.5-metal-amd64-worker.iso}"
 
 usage() {
   printf 'Usage: %s attach|detach\n' "$0" >&2
@@ -101,18 +99,23 @@ detach_cdrom() {
 
 case "$action" in
   attach)
-    stop_domain "$controlplane_domain"
-    stop_domain "$worker_domain"
-    detach_virtio_iso_if_present "$controlplane_domain"
-    detach_virtio_iso_if_present "$worker_domain"
-    attach_cdrom "$controlplane_domain" "$controlplane_iso"
-    attach_cdrom "$worker_domain" "$worker_iso"
-    start_domain "$controlplane_domain"
-    start_domain "$worker_domain"
+    while IFS=$'\t' read -r name _role _ip _iso_name; do
+      stop_domain "$name"
+    done < <(node_rows)
+
+    while IFS=$'\t' read -r name _role _ip iso_name; do
+      detach_virtio_iso_if_present "$name"
+      attach_cdrom "$name" "$iso_name"
+    done < <(node_rows)
+
+    while IFS=$'\t' read -r name _role _ip _iso_name; do
+      start_domain "$name"
+    done < <(node_rows)
     ;;
   detach)
-    detach_cdrom "$controlplane_domain" "$controlplane_iso"
-    detach_cdrom "$worker_domain" "$worker_iso"
+    while IFS=$'\t' read -r name _role _ip iso_name; do
+      detach_cdrom "$name" "$iso_name"
+    done < <(node_rows)
     ;;
   *)
     usage

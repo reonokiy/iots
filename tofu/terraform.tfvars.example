@@ -1,19 +1,33 @@
 # First-pass sizing for this host:
 # - 16 CPU threads total
 # - about 14 GiB RAM total
-# - two-node Talos cluster: control-plane only + worker workloads
+# - default Talos cluster: control-plane only + worker workloads
 
-cluster_name               = "iots-lab"
-controlplane_vcpu          = 4
-controlplane_memory_mib    = 4096
-controlplane_disk_bytes    = 85899345920
-libvirt_network_name       = "iots-lab"
-libvirt_network_cidr       = "192.168.130.0/24"
-controlplane_mac           = "52:54:00:13:37:11"
-controlplane_ip            = "192.168.130.11"
-worker_vcpu                = 6
-worker_memory_mib          = 6144
-worker_disk_bytes          = 107374182400
-worker_mac                 = "52:54:00:13:37:12"
-worker_ip                  = "192.168.130.12"
-talos_version              = "v1.13.5"
+cluster_name         = "iots-lab"
+libvirt_network_name = "iots-lab"
+libvirt_network_cidr = "192.168.130.0/24"
+talos_version        = "v1.13.5"
+kubernetes_version   = "1.36.1"
+
+controlplane_count       = 1
+controlplane_vcpu        = 4
+controlplane_memory_mib  = 4096
+controlplane_disk_bytes  = 85899345920
+controlplane_ip_start    = 11
+controlplane_mac_start   = 17
+
+worker_count      = 1
+worker_vcpu       = 6
+worker_memory_mib = 6144
+worker_disk_bytes = 107374182400
+worker_ip_start   = 12
+worker_mac_start  = 18
+
+# For more control-plane nodes, move the worker range out of the way:
+#
+# controlplane_count = 3
+# controlplane_ip_start = 11
+# controlplane_mac_start = 17
+# worker_count = 2
+# worker_ip_start = 21
+# worker_mac_start = 33

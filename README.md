@@ -17,10 +17,10 @@ iots-lab-cp-1      192.168.130.11  control-plane only
 iots-lab-worker-1  192.168.130.12  workloads
 ```
 
-IP addresses are static in the Talos machine configs under
-`talos/patches/*.yaml`. The libvirt network also keeps MAC/IP reservations for
-first-boot bootstrap, but OpenTofu does not wait for DHCP leases and Kubernetes
-node networking is declared by Talos.
+IP addresses and node names are declared in OpenTofu. The libvirt network keeps
+MAC/IP reservations for first-boot bootstrap, and `mise run talos:gen-config`
+generates matching per-node Talos static network configs from
+`tofu output -json nodes`.
 
 ## Host Setup
 
@@ -170,5 +170,36 @@ static IP: 192.168.130.12
 
 Each VM uses its own Talos ISO volume. This avoids SELinux label conflicts when
 both VMs boot at the same time.
+
+## Scaling Nodes
+
+Control-plane and worker counts are declared in `tofu/terraform.tfvars`:
+
+```hcl
+controlplane_count = 1
+worker_count       = 1
+```
+
+OpenTofu derives names, libvirt DHCP reservations, disks, ISO volumes, MACs, and
+static IPs for every node. Talos machine configs are then generated from the
+same OpenTofu outputs, so do not hand-edit generated files under
+`talos/generated/`.
+
+When adding control-plane nodes, keep the worker IP/MAC ranges out of the
+control-plane range:
+
+```hcl
+controlplane_count = 3
+controlplane_ip_start = 11
+controlplane_mac_start = 17
+
+worker_count = 2
+worker_ip_start = 21
+worker_mac_start = 33
+```
+
+The default Kubernetes endpoint is the first control-plane IP. For a real HA
+control-plane, set `cluster_endpoint` to a stable load-balancer or VIP endpoint
+before generating Talos configs.
 
 More details are in `TALOS.md`.
