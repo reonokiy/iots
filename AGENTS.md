@@ -170,10 +170,14 @@ Talos/Kubernetes bootstrap:
 mise run host:singbox-libvirt
 mise run talos:install-media:attach
 mise run talos:gen-config   # generates talos/generated/<node>.yaml
-mise run talos:apply-config # applies every generated node config
+mise run talos:apply-config # auto: secure for configured nodes, insecure for new maintenance-mode nodes
 mise run talos:bootstrap
 mise run talos:kubeconfig
 ```
+
+Use `TALOS_APPLY_MODE=insecure mise run talos:apply-config` only when every
+target node is in first-boot maintenance mode. Use `TALOS_APPLY_MODE=secure`
+when every target node is already configured.
 
 Checks:
 
