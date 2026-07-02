@@ -66,19 +66,32 @@ mise run talos:bootstrap
 mise run talos:kubeconfig
 ```
 
-The VM/libvirt bootstrap address is controlled by `tofu/terraform.tfvars` and
-libvirt DHCP MAC/IP reservations:
+`mise run talos:apply-config` uses auto mode by default. Auto mode probes each
+node with the authenticated Talos API; configured nodes get a normal authenticated
+`apply-config`, while new maintenance-mode nodes get `--insecure`. Use
+`TALOS_APPLY_MODE=insecure` only for explicit first-boot maintenance-mode apply,
+and use `TALOS_APPLY_MODE=secure` when every target is already configured.
+
+The VM/libvirt bootstrap addresses are controlled by `tofu/terraform.tfvars`
+and libvirt DHCP MAC/IP reservations:
 
 ```hcl
 libvirt_network_cidr = "192.168.130.0/24"
-controlplane_ip      = "192.168.130.11"
-worker_ip            = "192.168.130.12"
+controlplane_count   = 1
+controlplane_ip_start = 11
+worker_count         = 1
+worker_ip_start      = 12
 ```
 
-The Talos static network config is declared in `talos/patches/controlplane.yaml` and `talos/patches/worker.yaml`.
-Those patches also point Talos time sync at the host gateway `192.168.130.1`;
-the host's existing chronyd service is responsible for upstream time sync.
-Avoid adding a separate NTP component just for this lab.
+OpenTofu exports the node inventory through `tofu output -json nodes`. The
+Talos static network config, hostname config, `talos/talosconfig`, and per-node
+machine configs are generated from that inventory by
+`scripts/talos-gen-config.sh`. `talos/patches/controlplane.yaml` and
+`talos/patches/worker.yaml` are role-wide patches only.
+
+Generated Talos node configs also point time sync at the host gateway
+`192.168.130.1`; the host's existing chronyd service is responsible for upstream
+time sync. Avoid adding a separate NTP component just for this lab.
 
 After apply:
 
@@ -120,7 +133,24 @@ mise run hooks:run
 - 6 GiB on the worker gives workload pods the larger share of memory.
 - 80/100 GiB disks leave room for image pulls and experiments without making snapshots huge.
 
-## Scaling Later
+## Scaling Nodes
+
+The OpenTofu layer supports changing the number of control-plane and worker
+nodes:
+
+```hcl
+controlplane_count = 3
+worker_count       = 2
+```
+
+Use non-overlapping generated IP and MAC ranges:
+
+```hcl
+controlplane_ip_start  = 11
+controlplane_mac_start = 17
+worker_ip_start        = 21
+worker_mac_start       = 33
+```
 
 For HA on this host, be conservative:
 
@@ -128,7 +158,10 @@ For HA on this host, be conservative:
 3 control-plane VMs: 2 vCPU / 3 GiB RAM / 40 GiB each
 ```
 
-That fits only if the host is not doing much else.
+The default `cluster_endpoint` is the first control-plane IP. That is enough for
+this lab's no-extra-components route, but it is not a highly available API
+endpoint. Set `cluster_endpoint` to a stable VIP or load-balancer endpoint if
+one is added later.
 
 ## Secrets
 

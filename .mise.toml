@@ -66,15 +66,15 @@ run = "sudo bash scripts/host-singbox-libvirt.sh"
 
 [tasks."talos:install-media:attach"]
 description = "Temporarily attach Talos ISO volumes as SATA CD-ROMs for first boot."
-run = "sudo -u iots -g libvirt bash scripts/talos-install-media.sh attach"
+run = "sudo -u iots -g libvirt /usr/bin/mise exec -- bash scripts/talos-install-media.sh attach"
 
 [tasks."talos:install-media:detach"]
 description = "Remove temporary Talos ISO CD-ROMs from libvirt persistent VM config."
-run = "sudo -u iots -g libvirt bash scripts/talos-install-media.sh detach"
+run = "sudo -u iots -g libvirt /usr/bin/mise exec -- bash scripts/talos-install-media.sh detach"
 
 [tasks."talos:health"]
 description = "Check Talos cluster health."
-run = "talosctl --nodes 192.168.130.11 --endpoints 192.168.130.11 health --control-plane-nodes 192.168.130.11 --worker-nodes 192.168.130.12"
+run = "bash scripts/talos-health.sh"
 
 [tasks."talos:gen-secrets"]
 description = "Generate local Talos secrets.yaml. This file is ignored and must be encrypted with SOPS."
@@ -90,19 +90,19 @@ run = "umask 077 && sops --decrypt --output talos/secrets.yaml talos/secrets.sop
 
 [tasks."talos:gen-config"]
 description = "Generate Talos machine config and talosconfig from talos/secrets.yaml."
-run = "mkdir -p talos/generated && talosctl gen config iots-lab https://192.168.130.11:6443 --with-secrets talos/secrets.yaml --output talos/generated --force --talos-version v1.13.5 --kubernetes-version 1.36.1 --install-disk /dev/vda --install-image ghcr.io/siderolabs/installer:v1.13.5 --config-patch-control-plane @talos/patches/controlplane.yaml --config-patch-worker @talos/patches/worker.yaml && cp talos/generated/talosconfig talos/talosconfig && chmod 600 talos/talosconfig && talosctl --talosconfig talos/talosconfig config endpoint 192.168.130.11 && talosctl --talosconfig talos/talosconfig config node 192.168.130.11 192.168.130.12"
+run = "bash scripts/talos-gen-config.sh"
 
 [tasks."talos:apply-config"]
 description = "Apply the generated configs to the fresh Talos VMs."
-run = "talosctl apply-config --insecure --nodes 192.168.130.11 --file talos/generated/controlplane.yaml && talosctl apply-config --insecure --nodes 192.168.130.12 --file talos/generated/worker.yaml"
+run = "bash scripts/talos-apply-config.sh"
 
 [tasks."talos:bootstrap"]
 description = "Bootstrap etcd/Kubernetes on the Talos control-plane node."
-run = "talosctl --nodes 192.168.130.11 --endpoints 192.168.130.11 bootstrap"
+run = "bash scripts/talos-bootstrap.sh"
 
 [tasks."talos:kubeconfig"]
 description = "Fetch Kubernetes kubeconfig from Talos."
-run = "mkdir -p kubeconfig && talosctl --nodes 192.168.130.11 --endpoints 192.168.130.11 kubeconfig --force --force-context-name iots-lab kubeconfig/iots-lab.yaml"
+run = "bash scripts/talos-kubeconfig.sh"
 
 [tasks."k8s:nodes"]
 description = "List Kubernetes nodes."
