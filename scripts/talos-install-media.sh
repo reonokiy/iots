@@ -3,6 +3,8 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/talos-common.sh"
 
+load_tofu_outputs
+
 action="${1:-}"
 virsh_uri="${LIBVIRT_URI:-qemu:///system}"
 pool="${LIBVIRT_POOL:-iots-lab}"
@@ -99,23 +101,27 @@ detach_cdrom() {
 
 case "$action" in
   attach)
+    nodes_data="$(node_rows)"
+
     while IFS=$'\t' read -r name _role _ip _iso_name; do
       stop_domain "$name"
-    done < <(node_rows)
+    done <<<"$nodes_data"
 
     while IFS=$'\t' read -r name _role _ip iso_name; do
       detach_virtio_iso_if_present "$name"
       attach_cdrom "$name" "$iso_name"
-    done < <(node_rows)
+    done <<<"$nodes_data"
 
     while IFS=$'\t' read -r name _role _ip _iso_name; do
       start_domain "$name"
-    done < <(node_rows)
+    done <<<"$nodes_data"
     ;;
   detach)
+    nodes_data="$(node_rows)"
+
     while IFS=$'\t' read -r name _role _ip iso_name; do
       detach_cdrom "$name" "$iso_name"
-    done < <(node_rows)
+    done <<<"$nodes_data"
     ;;
   *)
     usage
