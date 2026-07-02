@@ -129,6 +129,13 @@ mise run talos:bootstrap
 mise run talos:kubeconfig
 ```
 
+`talos:apply-config` defaults to auto mode. It uses authenticated
+`talosctl apply-config` for nodes that already have a Talos machine config, and
+uses `--insecure` only for new maintenance-mode nodes. For explicit first-boot
+maintenance mode, run `TALOS_APPLY_MODE=insecure mise run talos:apply-config`.
+For authenticated-only updates, run `TALOS_APPLY_MODE=secure mise run
+talos:apply-config`.
+
 After Talos has installed to `/dev/vda`, remove the temporary install media from
 libvirt's persistent domain config:
 
