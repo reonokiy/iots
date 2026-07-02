@@ -3,6 +3,8 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/talos-common.sh"
 
+load_tofu_outputs
+
 generated_dir="$repo_root/talos/generated"
 base_dir="$generated_dir/base"
 patch_dir="$generated_dir/patches"
@@ -16,9 +18,10 @@ gateway_ip="$(tofu_raw gateway_ip)"
 network_prefix="$(tofu_raw network_prefix)"
 talos_version="$(tofu_raw talos_version)"
 kubernetes_version="$(tofu_raw kubernetes_version)"
+nodes_json="$(tofu_json_value nodes)"
 
-mapfile -t controlplane_ips < <(role_ips controlplane)
-mapfile -t all_node_ips < <(all_ips)
+mapfile -t controlplane_ips < <(role_ips_from_json "$nodes_json" controlplane)
+mapfile -t all_node_ips < <(all_ips_from_json "$nodes_json")
 
 if [ "${#controlplane_ips[@]}" -eq 0 ]; then
   printf 'No control-plane nodes found in OpenTofu outputs.\n' >&2
@@ -94,7 +97,7 @@ EOF
       exit 1
       ;;
   esac
-done < <(node_rows)
+done < <(node_rows_from_json "$nodes_json")
 
 cp "$base_dir/talosconfig" "$talosconfig"
 chmod 600 "$talosconfig"
