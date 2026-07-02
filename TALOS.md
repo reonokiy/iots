@@ -66,6 +66,12 @@ mise run talos:bootstrap
 mise run talos:kubeconfig
 ```
 
+`mise run talos:apply-config` uses auto mode by default. Auto mode probes each
+node with the authenticated Talos API; configured nodes get a normal authenticated
+`apply-config`, while new maintenance-mode nodes get `--insecure`. Use
+`TALOS_APPLY_MODE=insecure` only for explicit first-boot maintenance-mode apply,
+and use `TALOS_APPLY_MODE=secure` when every target is already configured.
+
 The VM/libvirt bootstrap addresses are controlled by `tofu/terraform.tfvars`
 and libvirt DHCP MAC/IP reservations:
 
